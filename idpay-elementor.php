@@ -64,7 +64,7 @@ final class IDPay_Elementor_Extension {
      */
     public function i18n() {
 
-        load_plugin_textdomain( 'idpay-elementor' );
+        load_plugin_textdomain( 'idpay-elementor', false, basename( dirname( __FILE__ ) ) . '/languages' );
 
     }
 
