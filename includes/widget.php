@@ -2,9 +2,7 @@
 /**
  * Elementor IDPay Widget.
  *
- * Elementor widget that inserts an embbedable content into the page, from any given URL.
- *
- * @since 1.0.0
+ * Elementor widget that inserts the IDPay transaction result.
  */
 class Elementor_IDPay_Widget extends \Elementor\Widget_Base {
 
@@ -43,30 +41,23 @@ class Elementor_IDPay_Widget extends \Elementor\Widget_Base {
     }
 
     /**
-     * Register IDPay widget controls.
-     *
      * Adds different input fields to allow the user to change and customize the widget settings.
-     *
-     * @since 1.0.0
-     * @access protected
      */
     protected function _register_controls() {
 
         $this->start_controls_section(
-            'content_section',
+            'idpay_section',
             [
-                'label' => __( 'Content', 'plugin-name' ),
+                'label' => __( 'IDPay result message', 'idpay-elementor' ),
                 'tab' => \Elementor\Controls_Manager::TAB_CONTENT,
             ]
         );
 
         $this->add_control(
-            'url',
+            'idpay_classes',
             [
-                'label' => __( 'URL to embed', 'plugin-name' ),
+                'label' => __( 'Extra classes', 'plugin-name' ),
                 'type' => \Elementor\Controls_Manager::TEXT,
-                'input_type' => 'url',
-                'placeholder' => __( 'https://your-link.com', 'plugin-name' ),
             ]
         );
 
@@ -76,23 +67,20 @@ class Elementor_IDPay_Widget extends \Elementor\Widget_Base {
 
     /**
      * Render IDPay widget output on the frontend.
-     *
-     * Written in PHP and used to generate the final HTML.
-     *
-     * @since 1.0.0
-     * @access protected
      */
     protected function render() {
 
         $settings = $this->get_settings_for_display();
 
-        $html = wp_idpay_get( $settings['url'] );
+        $classes = $settings['idpay_classes'];
 
-        echo '<div class="idpay-elementor-widget">';
+        if( !empty( $_GET['idpay_status'] ) && !empty( $_GET['idpay_message'] ) ){
+            $color = $_GET['idpay_status'] == 'failed' ? '#f44336' : '#8BC34A';
 
-        echo ( $html ) ? $html : $settings['url'];
-
-        echo '</div>';
+            echo sprintf( '<div class="idpay-elementor-widget %s">', $classes );
+            echo sprintf( '<b style="color:%s; text-align:center; display: block;">%s</b>', $color, sanitize_text_field( $_GET['idpay_message'] ) );
+            echo '</div>';
+        }
 
     }
 

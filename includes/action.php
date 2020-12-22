@@ -8,15 +8,11 @@ use Elementor\Controls_Manager;
 use Elementor\Settings;
 
 class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Action_Base {
-    private $wpdb;
-    public function __construct() {
-        global $wpdb;
-        $this->wpdb = $wpdb;
 
+    public function __construct() {
         if ( is_admin() ) {
             add_action( 'elementor/admin/after_create_settings/' . Settings::PAGE_ID, [ $this, 'register_admin_fields' ], 10 );
         }
-
     }
 
     /**
@@ -43,6 +39,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
      * @param \ElementorPro\Modules\Forms\Classes\Ajax_Handler $ajax_handler
      */
     public function run( $record, $ajax_handler ) {
+        global $wpdb;
 
         $settings = $record->get( 'form_settings' );
 
@@ -74,6 +71,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
         $name = !empty( $fields[ $settings['idpay_name_field'] ] ) ? $fields[ $settings['idpay_name_field'] ] : '';
         $phone = !empty( $fields[ $settings['idpay_phone_field'] ] ) ? $fields[ $settings['idpay_phone_field'] ] : '';
         $email = !empty( $fields[ $settings['idpay_email_field'] ] ) ? $fields[ $settings['idpay_email_field'] ] : '';
+        $desc = !empty( $fields[ $settings['idpay_desc_field'] ] ) ? $fields[ $settings['idpay_desc_field'] ] : '';
         $order_id = time();
 
         $row = [
@@ -82,13 +80,14 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             'trans_id' => '',
             'amount' => $amount,
             'phone' => $phone,
-            'description' => '',
+            'description' => $desc,
             'email' => $email,
             'created_at' => time(),
             'status' => 'pending',
             'log' => '',
+            'return_url' => $_REQUEST['referrer'],
         ];
-        $row_format = array(
+        $row_format = [
             '%d',
             '%d',
             '%s',
@@ -99,7 +98,8 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             '%s',
             '%s',
             "%s",
-        );
+            "%s",
+        ];
 
         $data = [
             'order_id'	=> $order_id,
@@ -107,21 +107,19 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             'name'		=> $name,
             'phone'		=> $phone,
             'mail'		=> $email,
-            'desc'		=> "",
+            'desc'		=> $desc,
             'callback'	=> add_query_arg( 'elementor_idpay_action', 'callback', get_home_url() ),
         ];
-
-        $headers = array(
-            'Content-Type'		=> 'application/json',
-            'X-API-KEY'			=> $api_key,
-            'X-SANDBOX'			=> $sandbox,
-        );
-
-        $args = array(
-            'body'				=> json_encode( $data ),
-            'headers'			=> $headers,
-            'timeout'			=> 15,
-        );
+        $headers = [
+            'Content-Type'=> 'application/json',
+            'X-API-KEY'	=> $api_key,
+            'X-SANDBOX'	=> $sandbox,
+        ];
+        $args = [
+            'body'		=> json_encode( $data ),
+            'headers'	=> $headers,
+            'timeout'	=> 15,
+        ];
 
         $IDPay = new IDPay_Elementor_Extension;
         $response = $IDPay->call_gateway_endpoint( 'https://api.idpay.ir/v1.1/payment', $args );
@@ -129,7 +127,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             $error = $response->get_error_message();
             $row['status'] = 'failed';
             $row['log'] = $error;
-            $this->wpdb->insert( $this->wpdb->prefix . $IDPay::IDPAY_TABLE_NAME, $row, $row_format );
+            $wpdb->insert( $wpdb->prefix . $IDPay::IDPAY_TABLE_NAME, $row, $row_format );
 
             $this->show_error( $error, $ajax_handler );
         }
@@ -142,14 +140,14 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             $error = sprintf( '%s (code: %s)', $result->error_message, $result->error_code );
             $row['status'] = 'failed';
             $row['log'] = $error;
-            $this->wpdb->insert( $this->wpdb->prefix . $IDPay::IDPAY_TABLE_NAME, $row, $row_format );
+            $wpdb->insert( $wpdb->prefix . $IDPay::IDPAY_TABLE_NAME, $row, $row_format );
 
             $this->show_error( $error, $ajax_handler );
         }
 
         $row['trans_id'] = $result->id;
         $row['status'] = 'bank';
-        $this->wpdb->insert( $this->wpdb->prefix . $IDPay::IDPAY_TABLE_NAME, $row, $row_format );
+        $wpdb->insert( $wpdb->prefix . $IDPay::IDPAY_TABLE_NAME, $row, $row_format );
 
         $ajax_handler->add_response_data( 'redirect_url', $result->link );
 
@@ -178,7 +176,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
         $widget->add_control(
             'idpay_msg',
             [
-                'type' => \Elementor\Controls_Manager::RAW_HTML,
+                'type' => Controls_Manager::RAW_HTML,
                 'raw' => sprintf( __( 'Set your Default Values in the <a href="%1$s" target="_blank">Integrations Settings</a>.', 'idpay-elementor' ), Settings::get_url() . '#tab-integrations' ),
                 'content_classes' => 'elementor-panel-alert elementor-panel-alert-warning',
             ]
@@ -188,7 +186,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             'idpay_amount_field',
             [
                 'label' => __( 'Amount Field ID', 'idpay-elementor' ),
-                'type' => \Elementor\Controls_Manager::TEXT,
+                'type' => Controls_Manager::TEXT,
             ]
         );
 
@@ -196,7 +194,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             'idpay_email_field',
             [
                 'label' => __( 'Email Field ID', 'idpay-elementor' ),
-                'type' => \Elementor\Controls_Manager::TEXT,
+                'type' => Controls_Manager::TEXT,
             ]
         );
 
@@ -204,7 +202,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             'idpay_name_field',
             [
                 'label' => __( 'Name Field ID', 'idpay-elementor' ),
-                'type' => \Elementor\Controls_Manager::TEXT,
+                'type' => Controls_Manager::TEXT,
             ]
         );
 
@@ -212,7 +210,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             'idpay_phone_field',
             [
                 'label' => __( 'Phone Field ID', 'idpay-elementor' ),
-                'type' => \Elementor\Controls_Manager::TEXT,
+                'type' => Controls_Manager::TEXT,
             ]
         );
 
@@ -220,7 +218,7 @@ class IDPay_Action_After_Submit extends \ElementorPro\Modules\Forms\Classes\Acti
             'idpay_desc_field',
             [
                 'label' => __( 'Desc Field ID', 'idpay-elementor' ),
-                'type' => \Elementor\Controls_Manager::TEXT,
+                'type' => Controls_Manager::TEXT,
             ]
         );
 

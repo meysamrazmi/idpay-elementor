@@ -9,6 +9,9 @@
  * Author Email: info@idpay.ir
  * Domain Path: /languages/
  */
+
+use Elementor\Settings;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -20,6 +23,7 @@ if (!defined('ABSPATH')) {
  */
 final class IDPay_Elementor_Extension {
 
+    const PAGE_ID = 'idpay-transactions';
     const VERSION = '1.0.0';
     const IDPAY_TABLE_NAME = 'elementor_idpay_transactions';
     const MINIMUM_ELEMENTOR_VERSION = '2.0.0';
@@ -47,6 +51,7 @@ final class IDPay_Elementor_Extension {
      */
     public function __construct() {
 
+        add_action( 'admin_menu', [ $this, 'register_admin_menu' ], 200 );
         add_action( 'init', [ $this, 'i18n' ] );
         add_action( 'plugins_loaded', [ $this, 'init' ] );
 
@@ -92,9 +97,10 @@ final class IDPay_Elementor_Extension {
             return;
         }
 
-        // Register widgets
+        // Register widgets and form action
         add_action( 'elementor_pro/init', [ $this, 'register' ] );
 
+        // handle payment callback
         if( !empty( $_GET['elementor_idpay_action'] ) ){
             if( sanitize_text_field($_GET['elementor_idpay_action']) == 'callback' ) {
                 require_once( __DIR__ . '/includes/callback.php' );
@@ -162,10 +168,35 @@ final class IDPay_Elementor_Extension {
     }
 
     /**
+     * Register admin page to list transactions
+     */
+    public function register_admin_menu() {
+        $page_title = __( 'IDPay Transactions', 'idpay-elementor' );
+
+        add_submenu_page(
+            Settings::PAGE_ID,
+            $page_title,
+            $page_title,
+            'manage_options',
+            self::PAGE_ID,
+            [ $this, 'list_transactions' ]
+        );
+
+    }
+
+    /**
+     * list all IDPay transactions
+     */
+    public function list_transactions() {
+        require_once(__DIR__ . '/includes/list-transactions.php');
+    }
+
+    /**
      * Load required plugin core files.
      */
     public function includes() {
         require_once(__DIR__ . '/includes/action.php');
+        require_once(__DIR__ . '/includes/widget.php');
     }
 
     /**
@@ -177,6 +208,8 @@ final class IDPay_Elementor_Extension {
 
         $idpay_action = new \IDPay_Action_After_Submit();
         \ElementorPro\Plugin::instance()->modules_manager->get_modules( 'forms' )->add_form_action( $idpay_action->get_name(), $idpay_action );
+
+        \Elementor\Plugin::instance()->widgets_manager->register_widget_type( new Elementor_IDPay_Widget );
 
     }
 
@@ -238,6 +271,7 @@ final class IDPay_Elementor_Extension {
                 created_at bigint(11) DEFAULT '0' NOT NULL,
                 status VARCHAR(255) NOT NULL,
                 log LONGTEXT CHARACTER SET utf8 COLLATE utf8_unicode_ci NULL,
+                return_url LONGTEXT CHARACTER SET utf8 COLLATE utf8_unicode_ci NULL,
                 PRIMARY KEY id (id)
             ) $collate;";
 
