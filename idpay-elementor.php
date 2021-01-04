@@ -3,7 +3,7 @@
  * Plugin Name: IDPay Elementor
  * Description: IDPay payment gateway for the Elementor Pro
  * Author: IDPay
- * Version: 1.0.0
+ * Version: 1.0.1
  * License: GPL v2.0.
  * Author URI: https://idpay.ir
  * Author Email: info@idpay.ir
@@ -51,7 +51,6 @@ final class IDPay_Elementor_Extension {
      */
     public function __construct() {
 
-        add_action( 'admin_menu', [ $this, 'register_admin_menu' ], 200 );
         add_action( 'init', [ $this, 'i18n' ] );
         add_action( 'plugins_loaded', [ $this, 'init' ] );
 
@@ -96,6 +95,8 @@ final class IDPay_Elementor_Extension {
             add_action( 'admin_notices', [ $this, 'admin_notice_minimum_php_version' ] );
             return;
         }
+
+        add_action( 'admin_menu', [ $this, 'register_admin_menu' ], 200 );
 
         // Register widgets and form action
         add_action( 'elementor_pro/init', [ $this, 'register' ] );
